@@ -1,9 +1,12 @@
-# Dependencies
-node_modules
+# Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies
+node_modules
 
 # Build output
 .next
@@ -11,7 +14,7 @@ out
 dist
 build
 
-# Cache directories
+# Cache
 .next/cache
 node_modules/.cache
 .cache
@@ -39,15 +42,18 @@ Thumbs.db
 
 # Git
 .git
-.gitignore
-
-# Documentation (not needed in build)
-*.md
-!README.md
 
 # Hardhat
 cache
 artifacts
+typechain
+typechain-types
+coverage.json
+coverage/
+
+# Documentation
+*.md
+!README.md
 
 # Misc
 .editorconfig
