@@ -175,7 +175,9 @@ For detailed deployment instructions to Railway or Vercel, see [DEPLOYMENT.md](.
 1. Push to GitHub
 2. Connect repository to Railway
 3. Add environment variables in Railway dashboard
-4. Railway will automatically deploy using the `.npmrc` configuration
+4. Railway will automatically deploy using the configured build settings
+
+**Note:** The project includes Railway-specific configurations (`.npmrc`, `railway.json`, `.env.production`, `next.config.ts`) to handle dependency conflicts and build issues with WalletConnect packages. These ensure successful deployment.
 
 ## License
 

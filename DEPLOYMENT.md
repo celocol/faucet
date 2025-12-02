@@ -55,10 +55,14 @@ If the build fails:
 
 ### Build Configuration
 
-The project includes:
+The project includes several files to ensure successful Railway deployment:
 - `.npmrc` with `legacy-peer-deps=true` to handle wagmi/rainbowkit version conflicts
-- Next.js 16 with Turbopack (disabled in production builds automatically)
+- `railway.json` with custom build configuration
+- `.env.production` disables Turbopack for production builds (uses webpack instead)
+- `next.config.ts` with serverExternalPackages to exclude problematic test files
 - All required dependencies in package.json
+
+**Why these configurations?** WalletConnect dependencies include test files that Turbopack tries to bundle, causing build failures. Our configuration ensures webpack is used for production builds, which handles these cases correctly.
 
 ### Post-Deployment
 
