@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { canClaim, recordClaim, getTimeUntilNextClaim } from '@/lib/store';
 import { verifyTwitterPost } from '@/lib/twitter';
-import { CLAIM_AMOUNTS, TOKEN_ADDRESSES } from '@/lib/constants';
+import { CLAIM_AMOUNTS, TOKEN_ADDRESSES, VerificationLevel } from '@/lib/constants';
 import { createWalletClient, http, parseEther, formatEther } from 'viem';
 import { celoAlfajores } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Determine claim amounts
-    const amounts = isTwitterVerified ? CLAIM_AMOUNTS.twitter : CLAIM_AMOUNTS.basic;
+    const amounts = isTwitterVerified ? CLAIM_AMOUNTS[VerificationLevel.TWITTER] : CLAIM_AMOUNTS[VerificationLevel.GITHUB];
 
     // Check for faucet private key
     const faucetPrivateKey = process.env.FAUCET_PRIVATE_KEY;

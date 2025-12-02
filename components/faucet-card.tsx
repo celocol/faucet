@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount } from 'wagmi';
 import { Wallet, Github, Twitter, Loader2 } from 'lucide-react';
-import { CLAIM_AMOUNTS } from '@/lib/constants';
+import { CLAIM_AMOUNTS, VerificationLevel } from '@/lib/constants';
 
 export function FaucetCard() {
   const { address, isConnected } = useAccount();
@@ -21,9 +21,9 @@ export function FaucetCard() {
   // Calculate claim amounts based on verifications
   const getClaimAmounts = () => {
     if (twitterPostUrl) {
-      return CLAIM_AMOUNTS.twitter;
+      return CLAIM_AMOUNTS[VerificationLevel.TWITTER];
     }
-    return CLAIM_AMOUNTS.basic;
+    return CLAIM_AMOUNTS[VerificationLevel.GITHUB];
   };
 
   const claimAmounts = getClaimAmounts();
