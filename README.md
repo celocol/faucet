@@ -166,6 +166,17 @@ faucet/
 
 Contributions are welcome! Please open an issue or submit a pull request.
 
+## Deployment
+
+For detailed deployment instructions to Railway or Vercel, see [DEPLOYMENT.md](./DEPLOYMENT.md).
+
+### Quick Railway Deploy
+
+1. Push to GitHub
+2. Connect repository to Railway
+3. Add environment variables in Railway dashboard
+4. Railway will automatically deploy using the `.npmrc` configuration
+
 ## License
 
 MIT
