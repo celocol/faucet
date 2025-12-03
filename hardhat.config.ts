@@ -12,12 +12,12 @@ const config: HardhatUserConfig = {
     },
   },
   networks: {
-    alfajores: {
-      url: "https://alfajores-forno.celo-testnet.org",
+    celoSepolia: {
+      url: "https://forno.celo-testnet.org",
       accounts: process.env.DEPLOYER_PRIVATE_KEY
         ? [process.env.DEPLOYER_PRIVATE_KEY]
         : [],
-      chainId: 44787,
+      chainId: 84532,
     },
     celo: {
       url: "https://forno.celo.org",

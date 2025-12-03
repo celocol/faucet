@@ -2,29 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { canClaim, recordClaim, getTimeUntilNextClaim } from '@/lib/store';
 import { verifyTwitterPost } from '@/lib/twitter';
-import { CLAIM_AMOUNTS, TOKEN_ADDRESSES, VerificationLevel } from '@/lib/constants';
-import { createWalletClient, http, parseEther, formatEther } from 'viem';
-import { celoAlfajores } from 'viem/chains';
-import { privateKeyToAccount } from 'viem/accounts';
+import { BASE_CLAIM_AMOUNT, VERIFICATION_MULTIPLIERS, VerificationLevel } from '@/lib/constants';
 
-// ERC20 ABI for transfer function
-const ERC20_ABI = [
-  {
-    inputs: [
-      { name: 'to', type: 'address' },
-      { name: 'amount', type: 'uint256' },
-    ],
-    name: 'transfer',
-    outputs: [{ name: '', type: 'bool' }],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-] as const;
+// Note: Blockchain interaction code removed for UI testing
+// Will be re-enabled when ready for production deployment
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { address, twitterPostUrl } = body;
+    const { address, twitterPostUrl, captchaToken } = body;
 
     // Validate address
     if (!address || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
@@ -34,18 +20,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check GitHub verification
-    const cookieStore = await cookies();
-    const githubCookie = cookieStore.get('github_user');
-
-    if (!githubCookie) {
+    // Verify captcha token (required for all claims)
+    if (!captchaToken) {
       return NextResponse.json(
-        { success: false, message: 'GitHub verification required' },
-        { status: 401 }
+        { success: false, message: 'Captcha verification required' },
+        { status: 400 }
       );
     }
 
-    const githubData = JSON.parse(githubCookie.value);
+    // TODO: Verify captcha token with Google reCAPTCHA API
+    // For now, we'll just check it exists (implement proper verification in production)
+
+    // Check for optional GitHub verification
+    const cookieStore = await cookies();
+    const githubCookie = cookieStore.get('github_user');
+    const githubData = githubCookie ? JSON.parse(githubCookie.value) : null;
+    const isGithubVerified = !!githubData;
 
     // Check rate limiting
     if (!canClaim(address)) {
@@ -66,68 +56,69 @@ export async function POST(request: NextRequest) {
       isTwitterVerified = await verifyTwitterPost(twitterPostUrl);
       if (!isTwitterVerified) {
         return NextResponse.json(
-          { success: false, message: 'Invalid Twitter post URL' },
+          { success: false, message: 'Twitter post must mention @celo_col' },
           { status: 400 }
         );
       }
     }
 
-    // Determine claim amounts
-    const amounts = isTwitterVerified ? CLAIM_AMOUNTS[VerificationLevel.TWITTER] : CLAIM_AMOUNTS[VerificationLevel.GITHUB];
+    // Calculate multiplier based on verifications
+    // Base claim: 1x (1 CELO + 1 cCOP) with captcha only
+    // GitHub: 5x multiplier
+    // Twitter: 5x multiplier
+    // Both GitHub + Twitter: 25x multiplier (5 * 5)
+    // Self verification: 10x (not stackable, mockup for now)
+    let multiplier = 1;
+    const verifications = [];
 
-    // Check for faucet private key
-    const faucetPrivateKey = process.env.FAUCET_PRIVATE_KEY;
-    if (!faucetPrivateKey) {
-      return NextResponse.json(
-        { success: false, message: 'Faucet not configured' },
-        { status: 500 }
-      );
+    // GitHub verification (optional)
+    if (isGithubVerified) {
+      multiplier *= VERIFICATION_MULTIPLIERS[VerificationLevel.GITHUB];
+      verifications.push('GitHub');
     }
 
-    // Create wallet client
-    const account = privateKeyToAccount(faucetPrivateKey as `0x${string}`);
-    const client = createWalletClient({
-      account,
-      chain: celoAlfajores,
-      transport: http(),
+    // Twitter verification (optional, multiplicative)
+    if (isTwitterVerified) {
+      multiplier *= VERIFICATION_MULTIPLIERS[VerificationLevel.TWITTER];
+      verifications.push('Twitter');
+    }
+
+    // If no verifications, just captcha
+    if (verifications.length === 0) {
+      verifications.push('Captcha');
+    }
+
+    // Calculate final amounts
+    const amounts = {
+      celo: BASE_CLAIM_AMOUNT.celo * multiplier,
+      ccop: BASE_CLAIM_AMOUNT.ccop * multiplier,
+    };
+
+    // MOCK: Simulate blockchain interaction (remove this section when ready for real transactions)
+    console.log('MOCK: Would send', amounts.celo, 'CELO and', amounts.ccop, 'cCOP to', address);
+    console.log('MOCK: GitHub user:', githubData?.username || 'none');
+    console.log('MOCK: Verifications:', verifications.join(' + '));
+    console.log('MOCK: Multiplier:', multiplier + 'x');
+
+    // Simulate processing delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    // Generate mock transaction hashes
+    const mockCeloTxHash = '0x' + Math.random().toString(16).substring(2, 66).padEnd(64, '0');
+    const mockCcopTxHash = '0x' + Math.random().toString(16).substring(2, 66).padEnd(64, '0');
+
+    // Record the claim (for rate limiting)
+    recordClaim(address, githubData?.username || 'anonymous');
+
+    return NextResponse.json({
+      success: true,
+      message: `Successfully claimed ${amounts.celo} CELO and ${amounts.ccop} cCOP! (${verifications.join(' + ')} = ${multiplier}x multiplier)`,
+      txHash: mockCeloTxHash,
+      ccopTxHash: mockCcopTxHash,
+      multiplier,
+      verifications,
+      mock: true,
     });
-
-    try {
-      // Send CELO
-      const celoAmount = parseEther(amounts.celo.toString());
-      const celoTxHash = await client.sendTransaction({
-        to: address as `0x${string}`,
-        value: celoAmount,
-      });
-
-      // Send cCOP tokens
-      const ccopAmount = parseEther(amounts.ccop.toString());
-      const ccopTxHash = await client.writeContract({
-        address: TOKEN_ADDRESSES.ccop as `0x${string}`,
-        abi: ERC20_ABI,
-        functionName: 'transfer',
-        args: [address as `0x${string}`, ccopAmount],
-      });
-
-      // Record the claim
-      recordClaim(address, githubData.username);
-
-      return NextResponse.json({
-        success: true,
-        message: `Successfully claimed ${amounts.celo} CELO and ${amounts.ccop} cCOP!`,
-        txHash: celoTxHash,
-        ccopTxHash,
-      });
-    } catch (error: any) {
-      console.error('Transaction error:', error);
-      return NextResponse.json(
-        {
-          success: false,
-          message: `Transaction failed: ${error.message || 'Unknown error'}`,
-        },
-        { status: 500 }
-      );
-    }
   } catch (error: any) {
     console.error('Claim error:', error);
     return NextResponse.json(

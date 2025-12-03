@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount } from 'wagmi';
 import { Wallet, Github, Twitter, Loader2 } from 'lucide-react';
-import { CLAIM_AMOUNTS, VerificationLevel } from '@/lib/constants';
+import { BASE_CLAIM_AMOUNT, VERIFICATION_MULTIPLIERS, VerificationLevel } from '@/lib/constants';
+import ReCAPTCHA from 'react-google-recaptcha';
 
 export function FaucetCard() {
   const { address, isConnected } = useAccount();
@@ -15,15 +16,30 @@ export function FaucetCard() {
   const [claiming, setClaiming] = useState(false);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
 
   const effectiveAddress = isConnected ? address : manualAddress;
 
   // Calculate claim amounts based on verifications
   const getClaimAmounts = () => {
-    if (twitterPostUrl) {
-      return CLAIM_AMOUNTS[VerificationLevel.TWITTER];
+    let multiplier = 1;
+
+    // GitHub verification (required)
+    if (githubConnected) {
+      multiplier *= VERIFICATION_MULTIPLIERS[VerificationLevel.GITHUB];
     }
-    return CLAIM_AMOUNTS[VerificationLevel.GITHUB];
+
+    // Twitter verification (optional, multiplicative)
+    if (twitterPostUrl) {
+      multiplier *= VERIFICATION_MULTIPLIERS[VerificationLevel.TWITTER];
+    }
+
+    return {
+      celo: BASE_CLAIM_AMOUNT.celo * multiplier,
+      ccop: BASE_CLAIM_AMOUNT.ccop * multiplier,
+      multiplier,
+    };
   };
 
   const claimAmounts = getClaimAmounts();
@@ -47,8 +63,8 @@ export function FaucetCard() {
       return;
     }
 
-    if (!githubConnected) {
-      setMessage('GitHub connection is required to claim tokens');
+    if (!captchaToken) {
+      setMessage('Please complete the captcha verification');
       return;
     }
 
@@ -64,6 +80,7 @@ export function FaucetCard() {
         body: JSON.stringify({
           address: effectiveAddress,
           twitterPostUrl: twitterPostUrl || undefined,
+          captchaToken,
         }),
       });
 
@@ -72,6 +89,9 @@ export function FaucetCard() {
       if (data.success) {
         setMessage(`✅ Successfully claimed ${claimAmounts.celo} CELO and ${claimAmounts.ccop} cCOP! TX: ${data.txHash}`);
         setTwitterPostUrl('');
+        // Reset captcha
+        recaptchaRef.current?.reset();
+        setCaptchaToken(null);
       } else {
         setMessage(`❌ ${data.message}`);
       }
@@ -102,7 +122,7 @@ export function FaucetCard() {
     <div className="w-full max-w-2xl mx-auto p-6 bg-white rounded-2xl shadow-xl border border-gray-200">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Celo Colombia Faucet</h1>
-        <p className="text-gray-600">Claim CELO and cCOP tokens on Alfajores testnet</p>
+        <p className="text-gray-600">Claim CELO and cCOP tokens on Celo Sepolia testnet</p>
       </div>
 
       {/* Wallet Connection Section */}
@@ -137,7 +157,7 @@ export function FaucetCard() {
           <div className="flex items-center gap-2">
             <Github className="w-5 h-5 text-gray-700" />
             <h2 className="font-semibold text-gray-900">GitHub Verification</h2>
-            <span className="text-xs text-red-600">(Required)</span>
+            <span className="text-xs text-blue-600">(Optional - 5x Multiplier)</span>
           </div>
           {githubConnected ? (
             <div className="flex items-center gap-2 text-green-600">
@@ -168,11 +188,11 @@ export function FaucetCard() {
         <div className="flex items-center gap-2 mb-3">
           <Twitter className="w-5 h-5 text-gray-700" />
           <h2 className="font-semibold text-gray-900">X (Twitter) Boost</h2>
-          <span className="text-xs text-blue-600">(Optional +4 CELO & +4 cCOP)</span>
+          <span className="text-xs text-blue-600">(Optional - 5x Multiplier = 25x Total!)</span>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Post on X tagging @celo_col and paste the link here
+            Post on X mentioning @celo_col and paste the link here
           </label>
           <input
             type="url"
@@ -186,7 +206,14 @@ export function FaucetCard() {
 
       {/* Claim Amounts Display */}
       <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border border-blue-200">
-        <h3 className="font-semibold text-gray-900 mb-2">Current Claim Amount</h3>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="font-semibold text-gray-900">Current Claim Amount</h3>
+          {claimAmounts.multiplier > 1 && (
+            <span className="text-xs font-bold text-purple-600 bg-purple-100 px-2 py-1 rounded">
+              {claimAmounts.multiplier}x Multiplier
+            </span>
+          )}
+        </div>
         <div className="flex gap-4">
           <div className="flex-1 text-center">
             <div className="text-3xl font-bold text-blue-600">{claimAmounts.celo}</div>
@@ -198,14 +225,27 @@ export function FaucetCard() {
           </div>
         </div>
         <div className="mt-2 text-xs text-gray-500 text-center">
-          Daily limit per address
+          {!githubConnected && !twitterPostUrl && 'Add verifications to increase your claim amount!'}
+          {githubConnected && !twitterPostUrl && 'Add X verification to get 25x total!'}
+          {!githubConnected && twitterPostUrl && 'Add GitHub verification to get 25x total!'}
+          {githubConnected && twitterPostUrl && 'Maximum multiplier active!'}
         </div>
+      </div>
+
+      {/* reCAPTCHA */}
+      <div className="mb-6 flex justify-center">
+        <ReCAPTCHA
+          ref={recaptchaRef}
+          sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || ''}
+          onChange={(token) => setCaptchaToken(token)}
+          onExpired={() => setCaptchaToken(null)}
+        />
       </div>
 
       {/* Claim Button */}
       <button
         onClick={handleClaim}
-        disabled={claiming || !effectiveAddress || !githubConnected}
+        disabled={claiming || !effectiveAddress || !captchaToken}
         className="w-full py-4 bg-gradient-to-r from-blue-600 to-green-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {claiming ? (
@@ -232,7 +272,7 @@ export function FaucetCard() {
       {/* Info Footer */}
       <div className="mt-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
         <p className="text-xs text-yellow-800">
-          ⚠️ This faucet operates on the Celo Alfajores testnet. Tokens have no real value.
+          ⚠️ This faucet operates on the Celo Sepolia testnet. Tokens have no real value.
           Claims are limited to once per day per address.
         </p>
       </div>

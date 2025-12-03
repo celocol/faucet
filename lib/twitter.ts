@@ -8,19 +8,37 @@ export async function verifyTwitterPost(postUrl: string): Promise<boolean> {
     return false;
   }
 
-  // In a production environment, you would:
-  // 1. Use Twitter API to fetch the tweet
-  // 2. Verify it mentions @celo_col
-  // 3. Check if it's recent (within last 24h)
-  // 4. Verify it's not a reused tweet
-
-  // For now, we'll do basic validation
-  // You can implement full Twitter API integration later
   try {
-    // Basic check - just verify URL format for now
     const url = new URL(postUrl);
-    return (url.hostname === 'twitter.com' || url.hostname === 'x.com');
-  } catch {
+    if (url.hostname !== 'twitter.com' && url.hostname !== 'x.com') {
+      return false;
+    }
+
+    // MOCKUP: Check if tweet mentions @celo_col by fetching the page content
+    // In production, you would use Twitter API with proper authentication
+    const tweetId = extractTweetId(postUrl);
+    if (!tweetId) return false;
+
+    // Fetch the tweet page to check for @celo_col mention
+    const response = await fetch(postUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; FaucetBot/1.0)',
+      },
+    });
+
+    if (!response.ok) return false;
+
+    const html = await response.text();
+
+    // Check if the page content includes @celo_col mention
+    // This is a simple check - in production use Twitter API
+    const hasCeloColMention = html.includes('@celo_col') ||
+                              html.includes('celo_col') ||
+                              html.includes('%40celo_col'); // URL encoded @
+
+    return hasCeloColMention;
+  } catch (error) {
+    console.error('Twitter verification error:', error);
     return false;
   }
 }

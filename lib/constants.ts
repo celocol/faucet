@@ -6,7 +6,20 @@ export enum VerificationLevel {
   SELF = 3,
 }
 
-// Claim amounts (from smart contract)
+// Base claim amount
+export const BASE_CLAIM_AMOUNT = {
+  celo: 1,
+  ccop: 1,
+};
+
+// Verification multipliers
+export const VERIFICATION_MULTIPLIERS = {
+  [VerificationLevel.GITHUB]: 5,
+  [VerificationLevel.TWITTER]: 5,
+  [VerificationLevel.SELF]: 10, // Not stackable with others
+};
+
+// Legacy: Claim amounts (from smart contract)
 export const CLAIM_AMOUNTS = {
   [VerificationLevel.GITHUB]: {
     celo: 1,
@@ -22,7 +35,7 @@ export const CLAIM_AMOUNTS = {
   },
 };
 
-// Token addresses on Celo Alfajores testnet
+// Token addresses on Celo Sepolia testnet
 export const TOKEN_ADDRESSES = {
   ccop: '0x5F8d55c3627d2dc0a2B4afa798f877242F382F67',
 };
