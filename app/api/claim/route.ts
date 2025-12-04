@@ -28,8 +28,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TODO: Verify captcha token with Google reCAPTCHA API
-    // For now, we'll just check it exists (implement proper verification in production)
+    // Verify captcha token with Google reCAPTCHA API
+    const captchaSecretKey = process.env.RECAPTCHA_SECRET_KEY;
+    if (captchaSecretKey) {
+      try {
+        const captchaResponse = await fetch(
+          'https://www.google.com/recaptcha/api/siteverify',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `secret=${captchaSecretKey}&response=${captchaToken}`,
+          }
+        );
+
+        const captchaData = await captchaResponse.json();
+
+        if (!captchaData.success) {
+          return NextResponse.json(
+            { success: false, message: 'Captcha verification failed' },
+            { status: 400 }
+          );
+        }
+      } catch (error) {
+        console.error('Captcha verification error:', error);
+        return NextResponse.json(
+          { success: false, message: 'Captcha verification error' },
+          { status: 500 }
+        );
+      }
+    }
 
     // Check for optional GitHub verification
     const cookieStore = await cookies();

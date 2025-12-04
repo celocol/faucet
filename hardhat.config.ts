@@ -13,11 +13,11 @@ const config: HardhatUserConfig = {
   },
   networks: {
     celoSepolia: {
-      url: "https://forno.celo-testnet.org",
+      url: "https://forno.celo-sepolia.celo-testnet.org",
       accounts: process.env.DEPLOYER_PRIVATE_KEY
         ? [process.env.DEPLOYER_PRIVATE_KEY]
         : [],
-      chainId: 84532,
+      chainId: 11142220,
     },
     celo: {
       url: "https://forno.celo.org",

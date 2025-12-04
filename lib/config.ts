@@ -4,7 +4,7 @@ import { defineChain } from 'viem';
 
 // Define Celo Sepolia testnet (replacing deprecated Alfajores)
 export const celoSepolia = defineChain({
-  id: 84532,
+  id: 11142220,
   name: 'Celo Sepolia Testnet',
   nativeCurrency: {
     decimals: 18,
@@ -13,7 +13,7 @@ export const celoSepolia = defineChain({
   },
   rpcUrls: {
     default: {
-      http: ['https://forno.celo-testnet.org'],
+      http: ['https://forno.celo-sepolia.celo-testnet.org'],
     },
   },
   blockExplorers: {
