@@ -63,7 +63,8 @@ export function FaucetCard() {
       return;
     }
 
-    if (!captchaToken) {
+    // Only require captcha if it's configured
+    if (process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY && !captchaToken) {
       setMessage('Please complete the captcha verification');
       return;
     }
@@ -233,19 +234,27 @@ export function FaucetCard() {
       </div>
 
       {/* reCAPTCHA */}
-      <div className="mb-6 flex justify-center">
-        <ReCAPTCHA
-          ref={recaptchaRef}
-          sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || ''}
-          onChange={(token) => setCaptchaToken(token)}
-          onExpired={() => setCaptchaToken(null)}
-        />
-      </div>
+      {process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ? (
+        <div className="mb-6 flex justify-center">
+          <ReCAPTCHA
+            ref={recaptchaRef}
+            sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY}
+            onChange={(token) => setCaptchaToken(token)}
+            onExpired={() => setCaptchaToken(null)}
+          />
+        </div>
+      ) : (
+        <div className="mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+          <p className="text-xs text-yellow-800 text-center">
+            ⚠️ reCAPTCHA not configured. Contact admin to enable bot protection.
+          </p>
+        </div>
+      )}
 
       {/* Claim Button */}
       <button
         onClick={handleClaim}
-        disabled={claiming || !effectiveAddress || !captchaToken}
+        disabled={claiming || !effectiveAddress || (process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ? !captchaToken : false)}
         className="w-full py-4 bg-gradient-to-r from-blue-600 to-green-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {claiming ? (

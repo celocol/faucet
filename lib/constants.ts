@@ -37,7 +37,7 @@ export const CLAIM_AMOUNTS = {
 
 // Token addresses on Celo Sepolia testnet
 export const TOKEN_ADDRESSES = {
-  ccop: '0x5F8d55c3627d2dc0a2B4afa798f877242F382F67',
+  ccop: '0x5F8d55c3627d2dc0a2B4afa798f877242F382F67', // TODO: Update with Sepolia testnet cCOP address
 };
 
 // Faucet contract address (update after deployment)

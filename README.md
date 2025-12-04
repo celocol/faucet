@@ -1,19 +1,22 @@
 # Celo Colombia Faucet
 
-A faucet application for distributing CELO and cCOP tokens on the Celo Alfajores testnet.
+A faucet application for distributing CELO and cCOP tokens on the Celo Sepolia testnet.
 
 ## Features
 
-- **GitHub Verification Required**: Users must connect their GitHub account to claim tokens
+- **Human Verification**: Google reCAPTCHA to prevent bot abuse
+- **GitHub Verification (Optional)**: 5x multiplier when connected
+- **Twitter/X Boost (Optional)**: 5x multiplier when posting with @celo_col
 - **Wallet Integration**: Users can connect their wallet or manually enter an address
-- **Twitter Boost**: Users can increase their claim amount by posting on X (Twitter) and tagging @celo_col
 - **Daily Limits**: Claims are limited to once per 24 hours per address
 
 ### Claim Amounts
 
-- **Basic Claim** (GitHub verified): 1 CELO + 1 cCOP
-- **Twitter Boost** (with X post): 5 CELO + 5 cCOP
-- **Self Verification** (coming soon): 10 CELO + 10 cCOP
+- **Base Claim** (captcha only): 1 CELO + 1 cCOP (1x)
+- **GitHub Verified**: 5 CELO + 5 cCOP (5x)
+- **Twitter/X Verified**: 5 CELO + 5 cCOP (5x)
+- **Both Verifications**: 25 CELO + 25 cCOP (25x - multiplicative!)
+- **Self Verification** (coming soon): 10 CELO + 10 cCOP (10x, not stackable)
 
 ## Prerequisites
 

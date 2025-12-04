@@ -20,17 +20,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify captcha token (required for all claims)
-    if (!captchaToken) {
-      return NextResponse.json(
-        { success: false, message: 'Captcha verification required' },
-        { status: 400 }
-      );
-    }
-
-    // Verify captcha token with Google reCAPTCHA API
+    // Verify captcha token (only if reCAPTCHA is configured)
     const captchaSecretKey = process.env.RECAPTCHA_SECRET_KEY;
-    if (captchaSecretKey) {
+    const isCaptchaConfigured = !!captchaSecretKey;
+
+    if (isCaptchaConfigured) {
+      if (!captchaToken) {
+        return NextResponse.json(
+          { success: false, message: 'Captcha verification required' },
+          { status: 400 }
+        );
+      }
+
+      // Verify captcha token with Google reCAPTCHA API
       try {
         const captchaResponse = await fetch(
           'https://www.google.com/recaptcha/api/siteverify',
