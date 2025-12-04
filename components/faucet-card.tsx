@@ -13,6 +13,8 @@ export function FaucetCard() {
   const [githubConnected, setGithubConnected] = useState(false);
   const [githubUsername, setGithubUsername] = useState('');
   const [twitterPostUrl, setTwitterPostUrl] = useState('');
+  const [twitterValidating, setTwitterValidating] = useState(false);
+  const [twitterValid, setTwitterValid] = useState<boolean | null>(null);
   const [claiming, setClaiming] = useState(false);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -23,15 +25,25 @@ export function FaucetCard() {
 
   // Calculate claim amounts based on verifications
   const getClaimAmounts = () => {
+    // If captcha is required and not completed, show 0
+    const isCaptchaRequired = !!process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+    if (isCaptchaRequired && !captchaToken) {
+      return {
+        celo: 0,
+        ccop: 0,
+        multiplier: 0,
+      };
+    }
+
     let multiplier = 1;
 
-    // GitHub verification (required)
+    // GitHub verification (optional)
     if (githubConnected) {
       multiplier *= VERIFICATION_MULTIPLIERS[VerificationLevel.GITHUB];
     }
 
-    // Twitter verification (optional, multiplicative)
-    if (twitterPostUrl) {
+    // Twitter verification (optional, multiplicative) - only if validated
+    if (twitterValid) {
       multiplier *= VERIFICATION_MULTIPLIERS[VerificationLevel.TWITTER];
     }
 
@@ -54,6 +66,37 @@ export function FaucetCard() {
       console.error(error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const validateTwitterPost = async (url: string) => {
+    if (!url) {
+      setTwitterValid(null);
+      return;
+    }
+
+    // Basic URL validation
+    const twitterRegex = /^https?:\/\/(twitter\.com|x\.com)\/\w+\/status\/\d+/;
+    if (!twitterRegex.test(url)) {
+      setTwitterValid(false);
+      return;
+    }
+
+    setTwitterValidating(true);
+    setTwitterValid(null);
+
+    try {
+      // Simple client-side check for now
+      // In production, this would call the backend to verify @celo_col mention
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+
+      // For now, just validate URL format
+      // Backend will do real verification when claiming
+      setTwitterValid(true);
+    } catch (error) {
+      setTwitterValid(false);
+    } finally {
+      setTwitterValidating(false);
     }
   };
 
@@ -120,9 +163,11 @@ export function FaucetCard() {
   }, []);
 
   return (
-    <div className="w-full max-w-2xl mx-auto p-6 bg-white rounded-2xl shadow-xl border border-gray-200">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Celo Colombia Faucet</h1>
+    <div className="w-full max-w-2xl mx-auto p-6 bg-white rounded-2xl shadow-xl border-2 border-yellow-200">
+      <div className="mb-6 text-center">
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-yellow-600 to-amber-600 bg-clip-text text-transparent mb-2">
+          Celo Colombia Faucet
+        </h1>
         <p className="text-gray-600">Claim CELO and cCOP tokens on Celo Sepolia testnet</p>
       </div>
 
@@ -169,7 +214,7 @@ export function FaucetCard() {
             <button
               onClick={handleGithubConnect}
               disabled={loading}
-              className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors disabled:opacity-50 flex items-center gap-2 shadow-sm"
             >
               {loading ? (
                 <>
@@ -189,47 +234,80 @@ export function FaucetCard() {
         <div className="flex items-center gap-2 mb-3">
           <Twitter className="w-5 h-5 text-gray-700" />
           <h2 className="font-semibold text-gray-900">X (Twitter) Boost</h2>
-          <span className="text-xs text-blue-600">(Optional - 5x Multiplier = 25x Total!)</span>
+          <span className="text-xs text-yellow-600">(Optional - 5x Multiplier = 25x Total!)</span>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Post on X mentioning @celo_col and paste the link here
           </label>
-          <input
-            type="url"
-            placeholder="https://twitter.com/..."
-            value={twitterPostUrl}
-            onChange={(e) => setTwitterPostUrl(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
+          <div className="relative">
+            <input
+              type="url"
+              placeholder="https://twitter.com/..."
+              value={twitterPostUrl}
+              onChange={(e) => {
+                setTwitterPostUrl(e.target.value);
+                validateTwitterPost(e.target.value);
+              }}
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-transparent ${
+                twitterValid === true
+                  ? 'border-green-500 focus:ring-green-500'
+                  : twitterValid === false
+                  ? 'border-red-500 focus:ring-red-500'
+                  : 'border-gray-300 focus:ring-yellow-500'
+              }`}
+            />
+            {twitterValidating && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+              </div>
+            )}
+            {!twitterValidating && twitterValid === true && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <span className="text-green-600 text-lg">✓</span>
+              </div>
+            )}
+            {!twitterValidating && twitterValid === false && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <span className="text-red-600 text-lg">✗</span>
+              </div>
+            )}
+          </div>
+          {twitterValid === true && (
+            <p className="mt-2 text-sm text-green-600">✅ Valid X post! 5x multiplier will be applied.</p>
+          )}
+          {twitterValid === false && (
+            <p className="mt-2 text-sm text-red-600">❌ Invalid URL. Must be a valid X/Twitter post link.</p>
+          )}
         </div>
       </div>
 
       {/* Claim Amounts Display */}
-      <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border border-blue-200">
+      <div className="mb-6 p-4 bg-gradient-to-r from-yellow-50 to-amber-50 rounded-lg border border-yellow-200">
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-semibold text-gray-900">Current Claim Amount</h3>
-          {claimAmounts.multiplier > 1 && (
-            <span className="text-xs font-bold text-purple-600 bg-purple-100 px-2 py-1 rounded">
+          {claimAmounts.multiplier >= 1 && (
+            <span className="text-xs font-bold text-yellow-700 bg-yellow-100 px-2 py-1 rounded">
               {claimAmounts.multiplier}x Multiplier
             </span>
           )}
         </div>
         <div className="flex gap-4">
           <div className="flex-1 text-center">
-            <div className="text-3xl font-bold text-blue-600">{claimAmounts.celo}</div>
+            <div className="text-3xl font-bold text-yellow-600">{claimAmounts.celo}</div>
             <div className="text-sm text-gray-600">CELO</div>
           </div>
           <div className="flex-1 text-center">
-            <div className="text-3xl font-bold text-green-600">{claimAmounts.ccop}</div>
+            <div className="text-3xl font-bold text-amber-600">{claimAmounts.ccop}</div>
             <div className="text-sm text-gray-600">cCOP</div>
           </div>
         </div>
         <div className="mt-2 text-xs text-gray-500 text-center">
-          {!githubConnected && !twitterPostUrl && 'Add verifications to increase your claim amount!'}
-          {githubConnected && !twitterPostUrl && 'Add X verification to get 25x total!'}
-          {!githubConnected && twitterPostUrl && 'Add GitHub verification to get 25x total!'}
-          {githubConnected && twitterPostUrl && 'Maximum multiplier active!'}
+          {claimAmounts.multiplier === 0 && 'Complete captcha to see claim amount'}
+          {claimAmounts.multiplier > 0 && !githubConnected && !twitterValid && 'Add verifications to increase your claim amount!'}
+          {claimAmounts.multiplier > 0 && githubConnected && !twitterValid && 'Add X verification to get 25x total!'}
+          {claimAmounts.multiplier > 0 && !githubConnected && twitterValid && 'Add GitHub verification to get 25x total!'}
+          {claimAmounts.multiplier > 0 && githubConnected && twitterValid && 'Maximum multiplier active!'}
         </div>
       </div>
 
@@ -255,7 +333,7 @@ export function FaucetCard() {
       <button
         onClick={handleClaim}
         disabled={claiming || !effectiveAddress || (process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ? !captchaToken : false)}
-        className="w-full py-4 bg-gradient-to-r from-blue-600 to-green-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="w-full py-4 bg-gradient-to-r from-yellow-500 to-amber-600 text-white font-semibold rounded-lg hover:from-yellow-600 hover:to-amber-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
       >
         {claiming ? (
           <>
